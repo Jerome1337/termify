@@ -13,11 +13,12 @@ Terminal Spotify player written in Python :snake:
 ## Usage
 
 ```bash
-$ pip require -r requirements.txt
-```
-
-```bash
+$ pip require -r requirements.txt --upgrade
 $ python termify.py
+
+# Or using Docker
+$ docker-compose up -d
+$ docker-compose exec termify python termify.py
 ```
 
 ```bash
