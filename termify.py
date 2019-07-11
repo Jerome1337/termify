@@ -3,8 +3,8 @@ Command module définition
 """
 from cmd import Cmd
 from termcolor import colored
+from spotipy import SpotifyException
 from login import Login
-
 
 class Termify(Cmd):
     """
@@ -70,8 +70,14 @@ class Termify(Cmd):
         """
         Switch to next track
         """
-        self.spotify_client.next_track()
-        print("Switched to next track")
+        message = "Switched to next track"
+
+        try:
+            self.spotify_client.next_track()
+        except SpotifyException as error:
+            message = error.msg
+
+        print(message)
 
     @classmethod
     def help_next(cls):
@@ -85,8 +91,14 @@ class Termify(Cmd):
         """
         Switch to previous track played
         """
-        self.spotify_client.previous_track()
-        print("Switched to previous track")
+        message = "Switched to previous track"
+
+        try:
+            self.spotify_client.previous_track()
+        except SpotifyException as error:
+            message = error.msg
+
+        print(message)
 
     @classmethod
     def help_previous(cls):
