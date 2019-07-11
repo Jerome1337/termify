@@ -1,4 +1,7 @@
 # Termify
+
+![](https://api.travis-ci.org/Jerome1337/termify.svg?branch=master)
+
 Terminal Spotify player written in Python :snake:
 
 ## Requirements
