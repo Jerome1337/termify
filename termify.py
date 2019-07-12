@@ -42,8 +42,8 @@ class Termify(Cmd):
 
         print("You are now logged as:", username)
 
-    @staticmethod
-    def do_exit():
+    # pylint: disable=W0613
+    def do_exit(self, line):
         """
         Exit Termify by runing exit method
         """
