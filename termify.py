@@ -51,19 +51,34 @@ class Termify(Cmd):
         return True
 
     # pylint: disable=W0613
-    def do_playback(self, line):
+    def do_play(self, line):
         """
-        Start/stop playback of your used device
+        Start playback of your used device
         """
         self.spotify_client.start_playback()
-        print("Playback")
+        print("Stream is now playing")
 
     @classmethod
-    def help_playback(cls):
+    def help_play(cls):
         """
         Documentation of playback command
         """
-        print("Start or stop steaming playback")
+        print("Start steaming playback")
+
+    # pylint: disable=W0613
+    def do_stop(self, line):
+        """
+        Stop playback of your used device
+        """
+        self.spotify_client.pause_playback()
+        print("Stream is now stopped")
+
+    @classmethod
+    def help_stop(cls):
+        """
+        Documentation of stop command
+        """
+        print("Stop steaming playback")
 
     # pylint: disable=W0613
     def do_next(self, line):
