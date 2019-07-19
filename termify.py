@@ -19,7 +19,7 @@ class Termify(Cmd):
 
     def default(self, line):
         if line in ("x", "q"):
-            self.do_exit()
+            self.do_exit(line)
         elif line == "c":
             self.do_current(line)
         elif line == "n":

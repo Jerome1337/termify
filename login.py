@@ -17,13 +17,12 @@ class Login():
         self.username = username
 
     def make_login(self):
-        client_id = ""
-        client_secret = ""
-        redirect_url = ""
-
         """
         Perform a login through OAuth to receive an authenticated client
         """
+        client_id = ""
+        client_secret = ""
+        redirect_url = ""
         token = util.prompt_for_user_token(
             self.username,
             "user-read-currently-playing user-modify-playback-state",
