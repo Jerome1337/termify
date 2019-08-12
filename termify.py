@@ -1,143 +1,165 @@
 """
-Command module définition
+Termify main module
 """
-from cmd import Cmd
-from termcolor import colored
-from spotipy import SpotifyException
-from login import Login
+from curses import endwin, initscr, newwin, noecho, textpad
+# pylint: disable=W0611
+from readline import insert_text
+from pynput import keyboard
+from player import Player
 
-class Termify(Cmd):
+
+class Termify:
     """
-    Class Termify contains all the command functions
+    Class Termify contains all the GUI creation/management methods
     """
-    prompt = colored('Termify> ', 'green')
-    intro = "Welcome on Termify"
-    doc_leader = "Manage your Spotify streaming direcly from your terminal\n"
+    player = Player()
+    main_screen = initscr()
+    exit_termify = False
 
-    logged = False
-    spotify_client = None
+    def main(self):
+        """
+        The main method render the correct screen login/player
+        and the keyboard listener
+        """
+        last_token_information = self.player.get_last_token_used()
+        logged = self.player.is_logged(last_token_information)
 
-    def default(self, line):
-        if line in ("x", "q"):
-            self.do_exit(line)
-        elif line == "c":
-            self.do_current(line)
-        elif line == "n":
-            self.do_next(line)
-        elif line == "p":
-            self.do_previous(line)
+        noecho()
+
+        self.header(self.main_screen)
+
+        if not logged:
+            self.login_screen()
         else:
-            print("Default: {}".format(line))
+            self.player.login(last_token_information['access_token'])
 
-    def do_login(self, username):
-        """
-        :param username: Username of the account that will be used by Termify
-        """
-        if username == "":
-            username = input("Give your Spotify username/id please: ")
+        self.footer(self.main_screen)
+        self.main_screen.refresh()
 
-            login = Login(username)
-            self.spotify_client = login.make_login()
-            self.logged = True
+        listener = keyboard.Listener(on_press=self.controls)
+        listener.start()
 
-        print("You are now logged as:", username)
+        # if not self.exited:
+        self.player_screen()
 
-    # pylint: disable=W0613
-    def do_exit(self, line):
+    def login_screen(self):
         """
-        Exit Termify by runing exit method
+        This method will render the screen used that will ask the user username/id
+        and then login if everything asked is correct
         """
-        print("See you next time on Termify")
-        return True
+        login_title = "Please login using your Spotify username/id:\n"
+        login_screen = newwin(0, 0)
+        login_screen.box()
+        v_dim, h_dim = login_screen.getmaxyx()
 
-    # pylint: disable=W0613
-    def do_play(self, line):
-        """
-        Start playback of your used device
-        """
-        self.spotify_client.start_playback()
-        print("Stream is now playing")
+        login_screen.addstr(round(v_dim / 2), round((h_dim - len(login_title)) / 2), login_title)
 
-    @classmethod
-    def help_play(cls):
-        """
-        Documentation of playback command
-        """
-        print("Start steaming playback")
+        username_input = login_screen.subwin(1, 44, round(v_dim / 2 + 1), round((h_dim - 44) / 2))
+        username_text_input = textpad.Textbox(username_input)
+        username_input.refresh()
 
-    # pylint: disable=W0613
-    def do_stop(self, line):
-        """
-        Stop playback of your used device
-        """
-        self.spotify_client.pause_playback()
-        print("Stream is now stopped")
+        login_screen.addstr(v_dim - 1, h_dim - 20, "[Enter]Submit")
+        login_screen.refresh()
 
-    @classmethod
-    def help_stop(cls):
-        """
-        Documentation of stop command
-        """
-        print("Stop steaming playback")
+        username = username_text_input.edit()
 
-    # pylint: disable=W0613
-    def do_next(self, line):
-        """
-        Switch to next track
-        """
-        message = "Switched to next track"
+        if str(username) != '':
+            oauth_win = newwin(0, 0)
+            oauth_win.box()
+            oauth_win.addstr(v_dim - 1, h_dim - 20, "[Enter]Submit")
+            oauth_win.refresh()
 
+            self.player.get_new_token(username)
+
+        endwin()
+
+    def player_screen(self):
+        """
+        This method will render the main player screen GUI
+        with the current track playing and the associated timeline
+        """
+        while True:
+            player = self.player.current_play()
+            current_track = next(player)
+            v_dim, h_dim = self.main_screen.getmaxyx()
+
+            self.main_screen.addstr(round(v_dim / 2), 1, ' ' * (h_dim - 2))
+            self.main_screen.addstr(
+                round(v_dim / 2),
+                round((h_dim - len(current_track)) / 2),
+                current_track
+            )
+            self.main_screen.refresh()
+
+            for player_state in player:
+                self.main_screen.addstr(
+                    round(v_dim / 2) + 1,
+                    round((h_dim - (len(player_state))) / 2),
+                    player_state
+                )
+                self.main_screen.refresh()
+
+                if not self.player.is_playing:
+                    break
+
+                if self.player.is_track_state_changed:
+                    self.player.is_track_state_changed = False
+                    break
+
+                if self.exit_termify:
+                    endwin()
+                    exit(0)
+
+    def controls(self, key):
+        """
+        This method provide Termify player controls handler
+        113 is the virtual keycode of the "q" key
+        269025044, 269025046, 269025047 are the virtual keycodes
+        of media player (previous, start/stop and next) keys
+
+        :param key: The key pressed by the user, sent by the listener created in the main method
+        """
         try:
-            self.spotify_client.next_track()
-        except SpotifyException as error:
-            message = error.msg
+            pressed_key = key.vk
+        except AttributeError:
+            pressed_key = None
 
-        print(message)
+        if pressed_key == 113:
+            self.exit_termify = True
+        elif pressed_key == 269025047:
+            self.player.next_track()
+        elif pressed_key == 269025046:
+            self.player.previous_track()
+        elif pressed_key == 269025044:
+            self.player.start_stop_streaming()
 
-    @classmethod
-    def help_next(cls):
+    @staticmethod
+    def header(screen):
         """
-        Documentation of switching to next track command
+        Add the same header on every screen you pass
+
+        :param screen: The screen where the header will be added
         """
-        print("Switch current playing track to the next one")
+        screen.box()
+        titles = ["Welcome on Termify", "Manage your Spotify streaming directly from your terminal"]
+        _, h_dim = screen.getmaxyx()
 
-    # pylint: disable=W0613
-    def do_previous(self, line):
+        for index, title in enumerate(titles):
+            screen.addstr(index + 1, round((h_dim - len(title)) / 2), title)
+
+    @staticmethod
+    def footer(screen):
         """
-        Switch to previous track played
+        Add same footer on every screen you pass
+
+        :param screen: The screen where the footer will be added
         """
-        message = "Switched to previous track"
+        v_dim, _ = screen.getmaxyx()
+        screen.addstr(
+            v_dim - 1,
+            1,
+            "(q) quit"
+        )
 
-        try:
-            self.spotify_client.previous_track()
-        except SpotifyException as error:
-            message = error.msg
 
-        print(message)
-
-    @classmethod
-    def help_previous(cls):
-        """
-        Documentation of switching to previous track command
-        """
-        print("Switch current playing track to the previous one")
-
-    # pylint: disable=W0613
-    def do_current(self, line):
-        """
-        Display current track playing
-        :param line:
-        :return:
-        """
-        track_information = self.spotify_client.current_playback()
-        album = track_information["item"]["album"]
-        artists_name = []
-
-        for artist in album["artists"]:
-            artists_name.append(artist["name"])
-
-        print(f"{', '.join(artists_name)} - {album['name']}")
-
-    do_EOF = do_exit
-
-Termify().cmdloop()
+Termify().main()
