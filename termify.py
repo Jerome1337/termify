@@ -5,6 +5,7 @@ from curses import endwin, initscr, newwin, noecho, textpad
 # pylint: disable=W0611
 from readline import insert_text
 from pynput import keyboard
+from sys import exit
 from player import Player
 
 
